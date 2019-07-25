@@ -15,6 +15,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
+using System.Net;
+using System.Web.Http;
 
 namespace BleagueBot.Function
 {
@@ -48,10 +50,18 @@ namespace BleagueBot.Function
                 }
             }
 
+            // Check the required params
+
+            // Access bleague.jp
+            HttpClient client = new HttpClient();
+            string url = "https://www.bleague.jp/schedule/?tab=1&year=2019&event=2";
+            string html = await client.GetStringAsync(url);
+
             return dateParam != null
-                ? (ActionResult)new OkObjectResult($"{startOfTheDay}-{startOfTheNextDay}")
+                ? (ActionResult)new OkObjectResult($"{startOfTheDay}-{startOfTheNextDay}-{html}")
                 : new BadRequestObjectResult("Please pass a name on the query string or in the request body");
         }
+        
         internal static double ConvertToUnixTime(DateTime date)
         {
             var diff = date - new DateTime(1970, 1, 1, 0, 0, 0, 0);
