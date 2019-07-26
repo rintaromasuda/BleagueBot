@@ -1,20 +1,12 @@
-using System;
-using System.IO;
-using System.Threading.Tasks;
+using HtmlAgilityPack;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using System;
-using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host;
 
 namespace BleagueBot.Function
 {
@@ -48,10 +40,26 @@ namespace BleagueBot.Function
                 }
             }
 
+            // Access bleague.jp
+            HttpClient client = new HttpClient();
+            string url = "https://www.bleague.jp/schedule/?tab=1&year=2019&event=2";
+            string html = await client.GetStringAsync(url);
+
+            // Parse the HTML and create a JSON object
+            HtmlDocument doc = new HtmlDocument();
+            doc.LoadHtml(html);
+         
+            //var postTitles = doc.DocumentNode
+            //                    .Descendants("td")
+            //                    .Where(x => x.Attributes.Contains("class") && x.Attributes["class"].Value.Contains("title"))
+            //                    .Select(x => x.InnerText);
+
+            // Return a response
             return dateParam != null
                 ? (ActionResult)new OkObjectResult($"{startOfTheDay}-{startOfTheNextDay}")
                 : new BadRequestObjectResult("Please pass a name on the query string or in the request body");
         }
+ 
         internal static double ConvertToUnixTime(DateTime date)
         {
             var diff = date - new DateTime(1970, 1, 1, 0, 0, 0, 0);
