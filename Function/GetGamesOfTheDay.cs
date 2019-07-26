@@ -1,10 +1,13 @@
 using HtmlAgilityPack;
+using Newtonsoft.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -46,17 +49,63 @@ namespace BleagueBot.Function
             string html = await client.GetStringAsync(url);
 
             // Parse the HTML and create a JSON object
+            var scheduleToReturn = new Schedule()
+            {
+                Date = dateParam,
+                Tag = Convert.ToInt16(tagParam),
+                Year = Convert.ToInt16(yearParam),
+                Event = Convert.ToInt16(eventParam)
+            };
+
             HtmlDocument doc = new HtmlDocument();
             doc.LoadHtml(html);
-         
-            //var postTitles = doc.DocumentNode
-            //                    .Descendants("td")
-            //                    .Where(x => x.Attributes.Contains("class") && x.Attributes["class"].Value.Contains("title"))
-            //                    .Select(x => x.InnerText);
+            var gameListItems = doc.DocumentNode.SelectNodes("//*[@id=\"round_list\"]/dd/ul/li");
+            var gameCount = gameListItems.Count;
+            foreach(var gameItem in gameListItems)
+            {
+                if (gameItem.Attributes.Contains("data-schedule-key") && gameItem.Attributes.Contains("data-game-date"))
+                {
+                    var gameUnixTime = Convert.ToDouble(gameItem.Attributes["data-game-date"].Value);
+                    if (startOfTheDay <= gameUnixTime && gameUnixTime < startOfTheNextDay)
+                    {
+                        var date = gameItem.Descendants("span")
+                                        .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "date"))
+                                        .First()
+                                        .InnerText;
+
+                        var time = gameItem.Descendants("span")
+                                        .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "time"))
+                                        .First()
+                                        .InnerText;
+                        time = time.Split()[0]; // Don't need the TIPOFF part
+
+                        var home = gameItem.Descendants("span")
+                                       .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "team_name home"))
+                                       .First()
+                                       .InnerText;
+
+                        var away = gameItem.Descendants("span")
+                                       .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "team_name"))
+                                       .First()
+                                       .InnerText;                                       
+
+                        var game = new Game()
+                        {
+                            Date = date,
+                            Time = time,
+                            Home = home,
+                            Away = away
+                        };
+                        scheduleToReturn.Games.Add(game);
+                    }
+                }
+            }
 
             // Return a response
+            var json = JsonConvert.SerializeObject(scheduleToReturn, Formatting.Indented);
+            
             return dateParam != null
-                ? (ActionResult)new OkObjectResult($"{startOfTheDay}-{startOfTheNextDay}")
+                ? (ActionResult)new OkObjectResult(json)
                 : new BadRequestObjectResult("Please pass a name on the query string or in the request body");
         }
  
@@ -65,5 +114,22 @@ namespace BleagueBot.Function
             var diff = date - new DateTime(1970, 1, 1, 0, 0, 0, 0);
             return diff.TotalSeconds;
         }
+    }
+
+    internal class Game
+    {
+        public string Home { get; set; }
+        public string Away { get; set; }
+        public string Date { get; set; }
+        public string Time { get; set; }
+    }
+
+    internal class Schedule
+    {
+        public string Date;
+        public int Tag;
+        public int Year;
+        public int Event;
+        public List<Game> Games = new List<Game>();
     }
 }
