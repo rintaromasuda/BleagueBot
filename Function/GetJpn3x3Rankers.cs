@@ -102,8 +102,6 @@ namespace BleagueBot
                 }
             }
 
-            result.Players.Reverse();
-
             // Return a response
             var json = JsonConvert.SerializeObject(result, Formatting.Indented);
 
