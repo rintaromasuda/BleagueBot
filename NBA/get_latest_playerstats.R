@@ -12,6 +12,11 @@ if(!require(rjson)){
   library(rjson)
 }
 
+if(!require(readr)){
+  install.packages("readr")
+  library(readr)
+}
+
 message(paste("Working directory:",
               getwd()))
 
@@ -51,7 +56,17 @@ file_name_team_games <- paste0(paste(season,
 games_done <- c()
 if(file.exists(file_name_team_games)){
   message(paste(file_name_team_games, "exists.\n"))
-  df <- read.csv(file_name_team_games)
+  df <- read_csv(file_name_team_games,
+                 col_types = list(col_character(), # Team_ID
+                                  col_character(), # Game_ID
+                                  col_character(), # GAME_DATE
+                                  col_character(), # MATCHUP
+                                  col_character(), # WL
+                                  col_integer(),   # W
+                                  col_integer(),   # L
+                                  col_integer()    # Game_Index
+                                  ),
+                 locale = readr::locale(encoding = "UTF-8"))
   games_done <- df$Game_ID
 } else {
   message(paste(file_name_team_games, "doesn't exist.\n"))
@@ -89,13 +104,15 @@ games_teamlog %<>%
 
 # Check the new games came from the API compared to the local file
 games_new <- subset(games_teamlog, !(Game_ID %in% games_done))
-message(games_new$Game_ID)
 
 #############################
 # Overriding the local file #
 #############################
 
 message("Overriding teamlog data to the file to update the info...\n")
-write.csv(games_teamlog, file = file_name_team_games, row.names = FALSE)
+write.csv(games_teamlog[, c("Team_ID", "Game_ID", "GAME_DATE", "MATCHUP", "WL", "W", "L", "Game_Index")],
+          file = file_name_team_games,
+          row.names = FALSE,
+          fileEncoding = "UTF-8")
 
 message("Finishing the script.\n")
