@@ -17,8 +17,11 @@ if(!require(readr)){
   library(readr)
 }
 
-message(paste("Working directory:",
-              getwd()))
+if(!require(RODBC)){
+  install.packages("RODBC")
+  library(RODBC)
+}
+
 
 #############
 # Arguments #
@@ -39,7 +42,12 @@ if(length(args) < 4) {
   arg_season_type <- args[2]
   arg_team_id <- args[3]
   arg_player_id <- args[4]
+  working_dir <- args[5]
+  setwd(working_dir)
 }
+
+message(paste("Working directory:",
+              getwd()))
 
 ########
 # Main #
@@ -107,7 +115,16 @@ games_new <- subset(games_teamlog, !(Game_ID %in% games_done))
 count_games_new <- nrow(games_new)
 message(paste("# of new games found: ", count_games_new))
 
+
+db_conn <- NULL
+
 for(row in 1:count_games_new){
+  
+  # Connect to the DB if it hans't
+  if(is.null(db_conn)){
+    db_conn <- odbcDriverConnect("Driver=ODBC Driver 17 for SQL Server;Server=XXXXX.database.windows.net,1433; Database=;Uid=; Pwd=-N;")
+  }
+  
   new_team_id <- games_new[row, ]$Team_ID
   new_game_id <- games_new[row, ]$Game_ID
   new_game_date <- games_new[row, ]$GAME_DATE
@@ -144,7 +161,22 @@ for(row in 1:count_games_new){
   # Get the boxscore of THAT PLAYER specified
   boxscore_the_player <- subset(boxscores, PLAYER_ID == arg_player_id)
   
-  break
+  # Connect to SQL Server
+  initdata <- sqlQuery(db_conn ,paste("INSERT INTO NbaPlayerLog(TeamId, PlayerId, GameId)",
+                                      "VALUES('",
+                                      arg_team_id,
+                                      "','",
+                                      arg_player_id,
+                                      "','",
+                                      new_game_id,
+                                      "'",
+                                      ")"
+                                      ))
+  message('DB INSERT done.')
+}
+
+if(is.null(db_conn)){
+  odbcClose(db_conn)
 }
 
 #############################
