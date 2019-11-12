@@ -38,8 +38,6 @@ namespace BleagueBot
             {
                 // This is a required param
                 tableName = string.Empty;
-                return new BadRequestObjectResult("No param!!!");
-
             }
 
             uint limit = Convert.ToUInt32(req.Query["limit"]);
