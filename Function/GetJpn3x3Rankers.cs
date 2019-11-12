@@ -28,11 +28,11 @@ namespace BleagueBot
             string tableName = string.Empty;
             if (rankType.Equals("m") || rankType.Equals("M"))
             {
-                tableName = "rankings-individual__rows rankings-individual__rows--men";
+                tableName = "men";
             }
             else if(rankType.Equals("w") || rankType.Equals("W"))
             {
-                tableName = "rankings-individual__rows rankings-individual__rows--women";
+                tableName = "women";
             }
             else
             {
@@ -54,7 +54,7 @@ namespace BleagueBot
             // Parse the page
             HtmlDocument doc = new HtmlDocument();
             doc.LoadHtml(html);
-            var playerRows = doc.DocumentNode.SelectNodes(string.Format("/html/body/div[1]/table/tbody[@class='{0}']/tr", tableName));
+            var playerRows = doc.DocumentNode.SelectNodes(string.Format("/html/body/div[@class='ranking']/table[@data-table-name='{0}']/tbody/tr", tableName));
 
             uint playerCount = 0;
             foreach (var row in playerRows)
