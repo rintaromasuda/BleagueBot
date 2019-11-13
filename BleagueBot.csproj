@@ -4,6 +4,14 @@
     <AzureFunctionsVersion>v2</AzureFunctionsVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="FunctionV1\**" />
+    <Compile Remove="Function\**" />
+    <EmbeddedResource Remove="FunctionV1\**" />
+    <EmbeddedResource Remove="Function\**" />
+    <None Remove="FunctionV1\**" />
+    <None Remove="Function\**" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" Version="1.11.12" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.29" />
   </ItemGroup>
