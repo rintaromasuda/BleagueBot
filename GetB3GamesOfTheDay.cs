@@ -58,7 +58,10 @@ namespace BleagueBot
                         var seachDateStr = targetDate.ToString("MM/dd");
                         if (dateStr.Contains(seachDateStr))
                         {
-                            timeStr = timeStr.Insert(timeStr.IndexOf("TIP"), " ");
+                            if (timeStr.IndexOf("TIP") > 0)
+                            {
+                                timeStr = timeStr.Insert(timeStr.IndexOf("TIP"), " ");
+                            }
 
                             var game = new Game()
                             {
