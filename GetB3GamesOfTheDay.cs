@@ -14,9 +14,9 @@ using System.Threading.Tasks;
 
 namespace BleagueBot
 {
-    public static class GetWLGamesOfTheDay
+    public static class GetB3GamesOfTheDay
     {
-        [FunctionName("GetWLGamesOfTheDay")]
+        [FunctionName("GetB3GamesOfTheDay")]
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
             ILogger log)
@@ -24,26 +24,23 @@ namespace BleagueBot
             log.LogInformation("C# HTTP trigger function processed a request.");
 
             string dateParam = req.Query["date"];
-            string lidParam = req.Query["lid"];
 
             var targetDate = DateTime.Parse(dateParam);
-            var targetYearMonthStr = targetDate.ToString("yyyy-MM");
+            var targetYearStr = targetDate.ToString("yyyy");
 
             HttpClient client = new HttpClient();
-            string url = string.Format("https://www.wjbl.org/schedule_result/?m={0}&l_id={1}",
-                                       targetYearMonthStr,
-                                       lidParam);
+            string url = string.Format("https://www.b3league.jp/schedule/{0}",
+                                       targetYearStr);
             string html = await client.GetStringAsync(url);
 
             // Get the schedule table
             HtmlDocument doc = new HtmlDocument();
             doc.LoadHtml(html);
-            var tableRows = doc.DocumentNode.SelectNodes("//table[@class=\"schedule table04\"]//tr");
+            var tableRows = doc.DocumentNode.SelectNodes("//tr[@class=\"siro\" or @class=\"kuro\"]");
 
             var scheduleToReturn = new Schedule()
             {
-                Date = "",
-                LID = lidParam
+                Date = ""
             };
 
             if (tableRows != null)
@@ -51,22 +48,22 @@ namespace BleagueBot
                 foreach (var tr in tableRows)
                 {
                     var cols = tr.SelectNodes("td");
-                    if (cols != null)
+                    if (cols != null && cols.Count >= 5)
                     {
-                        var dateStr = cols[0].SelectNodes("span")[0].InnerText.Trim();
-                        var timeStr = cols[0].SelectNodes("span")[1].InnerText.Trim();
-                        var homeTeam = cols[1].SelectNodes("div/div/a")[0].InnerText.Trim();
-                        var awayTeam = cols[1].SelectNodes("div/div/a")[1].InnerText.Trim();
+                        var dateStr = cols[0].InnerText.Trim();
+                        var timeStr = cols[5].InnerText.Trim();
+                        var homeTeam = cols[4].InnerText.Trim();
+                        var awayTeam = cols[6].InnerText.Trim();
 
-                        var gameDate = System.DateTime.Parse(dateStr, new CultureInfo("ja-jp"));
-                        if (gameDate == targetDate)
+                        var seachDateStr = targetDate.ToString("MM/dd");
+                        if (dateStr.Contains(seachDateStr))
                         {
-                            var timePartStr = timeStr.Split("ÅF")[1];
+                            timeStr = timeStr.Insert(timeStr.IndexOf("TIP"), " ");
 
                             var game = new Game()
                             {
-                                Date = gameDate.Date.ToString("yyyy/MM/dd"),
-                                Time = timePartStr,
+                                Date = targetDate.Date.ToString("yyyy/MM/dd"),
+                                Time = timeStr,
                                 Home = homeTeam,
                                 Away = awayTeam,
                                 Point = ""
@@ -97,7 +94,6 @@ namespace BleagueBot
         internal class Schedule
         {
             public string Date;
-            public string LID;
             public List<Game> Games = new List<Game>();
         }
     }
