@@ -29,8 +29,7 @@ namespace BleagueBot
             var targetYearStr = targetDate.ToString("yyyy");
 
             HttpClient client = new HttpClient();
-            string url = string.Format("https://www.b3league.jp/schedule/{0}",
-                                       targetYearStr);
+            string url = "https://www.b3league.jp/schedule/";
             string html = await client.GetStringAsync(url);
 
             // Get the schedule table
@@ -60,7 +59,7 @@ namespace BleagueBot
                         {
                             if (timeStr.IndexOf("TIP") > 0)
                             {
-                                timeStr = timeStr.Insert(timeStr.IndexOf("TIP"), " ");
+                                timeStr = timeStr.Substring(0, timeStr.IndexOf("TIP"));
                             }
 
                             var game = new Game()
