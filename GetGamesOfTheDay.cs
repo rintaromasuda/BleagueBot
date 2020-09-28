@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Globalization;
 
 namespace BleagueBot.Function
 {
@@ -72,63 +73,60 @@ namespace BleagueBot.Function
 
             HtmlDocument doc = new HtmlDocument();
             doc.LoadHtml(html);
-            var gameListItems = doc.DocumentNode.SelectNodes("//*[@id=\"round_list\"]/dd/ul/li");
-            var gameCount = gameListItems.Count;
-            foreach(var gameItem in gameListItems)
+
+            var rootNode =  doc.DocumentNode.SelectNodes("//section[@class=\"round\"]/dl[" + tabParam + "]");
+
+            var dateListItems = rootNode.Nodes();
+            DateTime gameDate = DateTime.MinValue;
+
+            //var gameCount = gameListItems.Count;
+            foreach(var dateItem in dateListItems)
             {
-                if (gameItem.Attributes.Contains("data-schedule-key") && gameItem.Attributes.Contains("data-game-date"))
+                if(dateItem.Name == "dt")
                 {
-                    double gameUnixTime = 0;
-                    try
+                    var gameDateStr = dateItem.InnerText;
+                    var cultureInfo = new CultureInfo("ja-JP");
+                    gameDate = DateTime.Parse(gameDateStr.Split()[0], cultureInfo);
+                }
+
+                if (dateItem.Name == "dd")
+                {
+                    if (gameDate.Date == targetDate.Date)
                     {
-                        gameUnixTime = Convert.ToDouble(gameItem.Attributes["data-game-date"].Value);
-                    }
-                    catch (Exception)
-                    {
-                        // Ignore
-                    }
-
-                    if (startOfTheDay <= gameUnixTime && gameUnixTime < startOfTheNextDay)
-                    {
-                        var date = gameItem.Descendants("span")
-                                        .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "date"))
-                                        .First()
-                                        .InnerText;
-
-                        var time = gameItem.Descendants("span")
-                                        .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "time"))
-                                        .First()
-                                        .InnerText;
-                        time = time.Split()[0]; // Don't need the TIPOFF part
-
-                        var home = gameItem.Descendants("span")
-                                       .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "team_name home"))
-                                       .First()
-                                       .InnerText;
-
-                        var away = gameItem.Descendants("span")
-                                       .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "team_name"))
-                                       .First()
-                                       .InnerText;
-
-                        var point = gameItem.Descendants("span")
-                                       .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "point"))
-                                       .First()
-                                       .InnerText;
-                        if (!string.IsNullOrEmpty(point))
+                        var gameItems = dateItem.Descendants("li")
+                                            .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "round__list--item"));
+                        foreach(var gameItem in gameItems)
                         {
-                            point = point.Trim();
+                            var arena = gameItem.Descendants("div")
+                                .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "arena"))
+                                .First();
+                            var timeTag = arena.SelectNodes(".//span[3]");
+                            var time = timeTag.Nodes().First().InnerText;
+
+                            time = time.Split()[0]; // Don't need the TIPOFF part
+
+                            var home = gameItem.Descendants("span")
+                                           .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "team_name home"))
+                                           .First()
+                                           .InnerText;
+
+                            var away = gameItem.Descendants("span")
+                                           .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "team_name"))
+                                           .First()
+                                           .InnerText;
+
+                            string point = string.Empty;
+
+                            var game = new Game()
+                            {
+                                Date = dateParam,
+                                Time = time,
+                                Home = home,
+                                Away = away,
+                                Point = point
+                            };
+                            scheduleToReturn.Games.Add(game);
                         }
-
-                        var game = new Game()
-                        {
-                            Date = date,
-                            Time = time,
-                            Home = home,
-                            Away = away,
-                            Point = point
-                        };
-                        scheduleToReturn.Games.Add(game);
                     }
                 }
             }
