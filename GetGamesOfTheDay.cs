@@ -56,7 +56,7 @@ namespace BleagueBot.Function
 
             // Access bleague.jp
             HttpClient client = new HttpClient();
-            string url = string.Format("https://www.bleague.jp/schedule/?tab={0}&year={1}&event={2}&setuFrom=1&setuTo=999",
+            string url = string.Format("https://www.bleague.jp/schedule/?tab={0}&year={1}&event={2}",
                                        tabParam,
                                        yearParam,
                                        eventParam);
