@@ -86,7 +86,14 @@ namespace BleagueBot.Function
                 {
                     var gameDateStr = dateItem.InnerText;
                     var cultureInfo = new CultureInfo("ja-JP");
-                    gameDate = DateTime.Parse(gameDateStr.Split()[0], cultureInfo);
+                    try
+                    {
+                        gameDate = DateTime.Parse(gameDateStr.Split()[0], cultureInfo);
+                    }
+                    catch(Exception)
+                    {
+                        gameDate = DateTime.MinValue;
+                    }
                 }
 
                 if (dateItem.Name == "dd")
