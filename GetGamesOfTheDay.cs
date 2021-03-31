@@ -104,13 +104,25 @@ namespace BleagueBot.Function
                                             .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "round__list--item"));
                         foreach(var gameItem in gameItems)
                         {
-                            var arena = gameItem.Descendants("div")
-                                .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "arena"))
-                                .First();
-                            var timeTag = arena.SelectNodes(".//span[3]");
-                            var time = timeTag.Nodes().First().InnerText;
+                            // Check if the game is canceld or not
+                            var btn = gameItem.Descendants("div")
+                                .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "btn btn-note disabled"));
 
-                            time = time.Split()[0]; // Don't need the TIPOFF part
+                            var time = string.Empty;
+                            if (btn.Count() == 1 && btn.First().InnerText.Contains("’†Ž~"))
+                            {
+                                time = "’†Ž~";
+                            }
+                            else
+                            {
+                                var arena = gameItem.Descendants("div")
+                                    .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "arena"))
+                                    .First();
+                                var timeTag = arena.SelectNodes(".//span[3]");
+                                time = timeTag.Nodes().First().InnerText;
+
+                                time = time.Split()[0]; // Don't need the TIPOFF part
+                            }
 
                             var home = gameItem.Descendants("span")
                                            .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "team_name home"))
