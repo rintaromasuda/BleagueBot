@@ -11,6 +11,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Globalization;
+using System.Security.Claims;
 
 namespace BleagueBot.Function
 {
@@ -55,11 +56,14 @@ namespace BleagueBot.Function
             }
 
             // Access bleague.jp
+            // https://www.bleague.jp/schedule/?tab=2&year=2022&mon=10&day=07&event=2&club=
             HttpClient client = new HttpClient();
-            string url = string.Format("https://www.bleague.jp/schedule/?tab={0}&year={1}&event={2}",
+            string url = string.Format("https://www.bleague.jp/schedule/?tab={0}&year={1}&event={2}&mon={3}&day={4}",
                                        tabParam,
                                        yearParam,
-                                       eventParam);
+                                       eventParam,
+                                       targetDate.Month,
+                                       targetDate.Day);
             string html = await client.GetStringAsync(url);
 
             // Parse the HTML and create a JSON object
@@ -73,81 +77,59 @@ namespace BleagueBot.Function
 
             HtmlDocument doc = new HtmlDocument();
             doc.LoadHtml(html);
-
-            var rootNode =  doc.DocumentNode.SelectNodes("//section[@class=\"round\"]/dl[" + tabParam + "]");
-
+            HtmlNodeCollection rootNode = doc.DocumentNode.SelectNodes("//div[@class=\"swiper-wrapper\"]");
             var dateListItems = rootNode.Nodes();
-            DateTime gameDate = DateTime.MinValue;
-
-            //var gameCount = gameListItems.Count;
-            foreach(var dateItem in dateListItems)
+ 
+            bool isCurrentFound = false;
+            string currentMonthStr = String.Empty;
+            string currentDayStr = String.Empty;
+            foreach (var dateItem in dateListItems)
             {
-                if(dateItem.Name == "dt")
+                if (!isCurrentFound)
                 {
-                    var gameDateStr = dateItem.InnerText;
-                    var cultureInfo = new CultureInfo("ja-JP");
-                    try
+                    if (dateItem.Name == "div" && dateItem.Attributes["class"].Value.Contains("is-current"))
                     {
-                        gameDate = DateTime.Parse(gameDateStr.Split()[0], cultureInfo);
-                    }
-                    catch(Exception)
-                    {
-                        gameDate = DateTime.MinValue;
+                        isCurrentFound = true;
+
+                        currentMonthStr = dateItem.SelectNodes("a/span")[0].InnerText.Trim();
+                        currentDayStr = dateItem.SelectNodes("a/span")[1].InnerText.Trim();
+
                     }
                 }
+            }
 
-                if (dateItem.Name == "dd")
+            bool IsCurrentSameDay = false;
+            if (isCurrentFound)
+            {
+                int currentMonth = Convert.ToInt32(currentMonthStr.Substring(0, currentMonthStr.Length - 1));
+                int currentDay = Convert.ToInt32(currentDayStr);
+
+                IsCurrentSameDay = ((currentMonth == targetDate.Month) && (currentDay == targetDate.Day));
+            }
+
+            if (IsCurrentSameDay)
+            {
+                HtmlNode rootGameNode = doc.DocumentNode.SelectNodes("//ul[@class=\"round-list\"]")[0];
+                var gameItems = rootGameNode.SelectNodes("li[@class=\"list-item\"]");
+                foreach (var gameItem in gameItems)
                 {
-                    if (gameDate.Date == targetDate.Date)
+                    var time = gameItem.SelectNodes(".//div[@class=\"info-arena\"]/span")[2].InnerText.Trim();
+                    var home = gameItem.SelectNodes(".//span[@class=\"team home\"]/span[@class=\"team-name\"]")[0].InnerText.Trim();
+                    var away = gameItem.SelectNodes(".//span[@class=\"team away\"]/span[@class=\"team-name\"]")[0].InnerText.Trim();
+
+                    string point = string.Empty;
+
+                    var game = new Game()
                     {
-                        var gameItems = dateItem.Descendants("li")
-                                            .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "round__list--item"));
-                        foreach(var gameItem in gameItems)
-                        {
-                            // Check if the game is canceld or not
-                            var btn = gameItem.Descendants("div")
-                                .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "btn btn-note disabled"));
-
-                            var time = string.Empty;
-                            if (btn.Count() == 1 && btn.First().InnerText.Contains("’†Ž~"))
-                            {
-                                time = "’†Ž~";
-                            }
-                            else
-                            {
-                                var arena = gameItem.Descendants("div")
-                                    .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "arena"))
-                                    .First();
-                                var timeTag = arena.SelectNodes(".//span[3]");
-                                time = timeTag.Nodes().First().InnerText;
-
-                                time = time.Split()[0]; // Don't need the TIPOFF part
-                            }
-
-                            var home = gameItem.Descendants("span")
-                                           .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "team_name home"))
-                                           .First()
-                                           .InnerText;
-
-                            var away = gameItem.Descendants("span")
-                                           .Where(x => x.Attributes.Contains("class") && (x.Attributes["class"].Value == "team_name"))
-                                           .First()
-                                           .InnerText;
-
-                            string point = string.Empty;
-
-                            var game = new Game()
-                            {
-                                Date = dateParam,
-                                Time = time,
-                                Home = home,
-                                Away = away,
-                                Point = point
-                            };
-                            scheduleToReturn.Games.Add(game);
-                        }
-                    }
+                        Date = dateParam,
+                        Time = time,
+                        Home = home,
+                        Away = away,
+                        Point = point
+                    };
+                    scheduleToReturn.Games.Add(game);
                 }
+
             }
 
             // Return a response

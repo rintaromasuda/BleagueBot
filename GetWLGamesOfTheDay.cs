@@ -55,8 +55,8 @@ namespace BleagueBot
                     {
                         var dateStr = cols[0].SelectNodes("span")[0].InnerText.Trim();
                         var timeStr = cols[0].SelectNodes("span")[1].InnerText.Trim();
-                        var homeTeam = cols[1].SelectNodes("div/div/a")[0].InnerText.Trim();
-                        var awayTeam = cols[1].SelectNodes("div/div/a")[1].InnerText.Trim();
+                        var homeTeam = cols[1].SelectNodes("div/div/span[@class=\"team-name\"]")[0].InnerText.Trim();
+                        var awayTeam = cols[1].SelectNodes("div/div/span[@class=\"team-name\"]")[1].InnerText.Trim();
 
                         var gameDate = System.DateTime.Parse(dateStr, new CultureInfo("ja-jp"));
                         if (gameDate == targetDate)
